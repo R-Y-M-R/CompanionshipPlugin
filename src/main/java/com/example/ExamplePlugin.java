@@ -15,6 +15,7 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.NPCManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -29,6 +30,9 @@ public class ExamplePlugin extends Plugin
 {
 	@Inject
 	private Client client;
+
+	@Inject
+	NPCManager npcManager;
 
 	@Inject
 	private ExampleConfig config;

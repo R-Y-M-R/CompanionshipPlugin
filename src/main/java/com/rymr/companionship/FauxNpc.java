@@ -3,18 +3,20 @@ package com.rymr.companionship;
 import java.util.*;
 import java.util.function.Function;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import java.awt.Color;
+
+import net.runelite.cache.NpcManager;
+import net.runelite.cache.definitions.NpcDefinition;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.game.NPCManager;
 
 /*
  * Copyright (c) 2023, R-Y-M-R <https://github.com/R-Y-M-R>
@@ -44,16 +46,25 @@ import net.runelite.client.chat.QueuedMessage;
  */
 public class FauxNpc {
 
+
     private boolean needsUpdate;
 
-    public void setNpcStyle(int npcId) {
-        Optional<NPCComposition> npcComp = grabNpcDef(npcId);
-        npcComp.ifPresent(npcComposition -> npcStyle = npcComposition);
+    @Getter private int id;
+
+    public void updateNpcData(int npcId) {
+        Optional<NPCComposition> npcComp = getNpcComp(npcId);
+        npcComp.ifPresent(npcComposition -> this.npcComposition = npcComposition);
+
+        Optional<NpcDefinition> npcDef =
         needsUpdate = true;
     }
 
-    public Optional<NPCComposition> grabNpcDef(final int npcId) {
+    public Optional<NPCComposition> getNpcComp(final int npcId) {
         return Optional.ofNullable(client.getNpcDefinition(npcId));
+    }
+
+    public Optional<NpcDefinition> getNpcDef(final int npcId) {
+        return npcManager.getNpcs();
     }
 
     public final RuneLiteObject runeLiteObject;
@@ -61,6 +72,7 @@ public class FauxNpc {
     public final WorldPoint worldPoint;
     private final Client client;
     private final ClientThread clientThread;
+    private final NPCManager npcManager;
     @Getter
     private final Style style;
 
@@ -73,7 +85,8 @@ public class FauxNpc {
     private static final int QUEST_HOOD_MALE = 18914;
     private static final int QUEST_CAPE_MALE = 18946;
 
-    @Getter private NPCComposition npcStyle;
+    @Getter private NPCComposition npcComposition;
+    @Getter private NPCDefinition npcDefinition;
     @Getter private String name;
     private void setName(String name) {
         this.name = name;
@@ -83,6 +96,34 @@ public class FauxNpc {
     private void setExamine(String examine) {
         this.examine = examine;
         needsUpdate = true;
+    }
+
+    public AnimationID getWalkAnimation() {
+        return ;
+    }
+
+
+    void buildRuneliteObject() {
+        update();
+
+        runeLiteObject.setShouldLoop(true);
+
+        LocalPoint lp = LocalPoint.fromWorld(client, this.worldPoint);
+
+        String chatMessage = new ChatMessageBuilder()
+                .append(ChatColorType.NORMAL)
+                .append(this.message)
+                .build();
+
+        chatMessageManager.queue(QueuedMessage.builder()
+                .type(ChatMessageType.PUBLICCHAT)
+                .name(style.getDisplayName())
+                .runeLiteFormattedMessage(chatMessage)
+                .timestamp((int) (System.currentTimeMillis() / 1000))
+                .build());
+        runeLiteObject.setLocation(lp, client.getPlane());
+
+        runeLiteObject.setActive(true);
     }
 
 
@@ -207,10 +248,11 @@ public class FauxNpc {
         return client.mergeModels(modelData);
     }
 
-    public FauxNpc(Client client, ClientThread clientThread, WorldPoint worldPoint, Style style, ChatMessageManager chatMessageManager, String message)
+    public FauxNpc(Client client, ClientThread clientThread, WorldPoint worldPoint, Style style, ChatMessageManager chatMessageManager, String message, NPCManager npcManager)
     {
         this.client = client;
         this.clientThread = clientThread;
+        this.npcManager = npcManager;
         this.style = style;
         this.runeLiteObject = client.createRuneLiteObject();
         this.worldPoint = worldPoint;
